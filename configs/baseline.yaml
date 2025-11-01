@@ -1,0 +1,75 @@
+# Baseline Transformer Configuration
+
+# For test run
+model:
+  vocab_size: 1000
+  hidden_dim: 128
+  num_layers: 4
+  num_heads: 4
+  num_kv_heads: 4
+  ffn_hidden_dim: 512
+  max_seq_len: 128
+  dropout: 0.1
+  use_rmsnorm: true
+  use_rope: true
+  use_swiglu: true
+
+training:
+  learning_rate: 3.0e-4
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  warmup_steps: 100
+  gradient_accumulation_steps: 1
+  batch_size: 8
+  max_steps: 100      # (short run for testing)
+  log_every: 10
+  eval_every: 20
+  save_every: 50
+  checkpoint_dir: "./checkpoints/test/baseline"
+
+data:
+  dataset_name: "synthetic-test"
+  data_dir: "./data"
+  max_length: 128
+  num_workers: 2
+
+### Config With complete data ### 
+# model:
+#   vocab_size: 10000
+#   hidden_dim: 512
+#   num_layers: 12
+#   num_heads: 8
+#   num_kv_heads: 8
+#   ffn_hidden_dim: 2048
+#   max_seq_len: 512
+#   dropout: 0.1
+#   use_rmsnorm: true
+#   use_rope: true
+#   use_swiglu: true
+
+# training:
+#   learning_rate: 3.0e-4
+#   weight_decay: 0.1
+#   beta1: 0.9
+#   beta2: 0.95
+#   grad_clip: 1.0
+#   warmup_steps: 1000
+#   max_steps: 50000
+#   batch_size: 32
+#   gradient_accumulation_steps: 1
+  
+#   # Checkpointing
+#   save_every: 5000
+#   eval_every: 1000
+#   checkpoint_dir: "./checkpoints/baseline"
+  
+#   # Logging
+#   log_every: 100
+
+# data:
+#   dataset_name: "synthetic"
+#   data_dir: "./data"
+#   max_length: 512
+#   num_workers: 4
