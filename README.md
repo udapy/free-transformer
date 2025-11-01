@@ -88,10 +88,14 @@ uv pip install -e ".[dev]"
 uv pip install free-transformer
 ```
 
-Standard pip (after PyPI release):
+Standard pip :
 
 ```bash
 pip install free-transformer
+```
+OR
+```bash
+uv run pip install free-transformer
 ```
 
 ---
