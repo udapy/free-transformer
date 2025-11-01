@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  free-transformer-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: free-transformer:demo
+    container_name: free-transformer-demo
+    volumes:
+      - ./data:/workspace/data
+      - ./checkpoints:/workspace/checkpoints
+      - ./logs:/workspace/logs
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/workspace/src
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["./demo.sh"]
+    
+  free-transformer-interactive:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: free-transformer:demo
+    container_name: free-transformer-interactive
+    volumes:
+      - ./data:/workspace/data
+      - ./checkpoints:/workspace/checkpoints
+      - ./logs:/workspace/logs
+      - .:/workspace
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/workspace/src
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["/bin/bash"]
+    stdin_open: true
+    tty: true

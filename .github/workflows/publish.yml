@@ -1,0 +1,97 @@
+name: Publish Free Transformer to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      test_pypi:
+        description: 'Publish to Test PyPI instead of PyPI'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -e ".[dev]"
+    
+    - name: Run tests
+      run: |
+        python -m pytest tests/ -v
+    
+    - name: Run quality checks
+      run: |
+        python -m black --check src/
+        python -m ruff check src/
+        python -m mypy src/
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install build
+    
+    - name: Verify free-transformer version matches tag
+      if: github.event_name == 'release'
+      run: |
+        TAG_VERSION=${GITHUB_REF#refs/tags/v}
+        PACKAGE_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+        echo "Tag version: $TAG_VERSION"
+        echo "Package version: $PACKAGE_VERSION"
+        if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+          echo "❌ Tag version ($TAG_VERSION) doesn't match free-transformer package version ($PACKAGE_VERSION)"
+          exit 1
+        fi
+        echo "✅ Version verification passed for free-transformer"
+    
+    - name: Build free-transformer package
+      run: |
+        echo "🔨 Building free-transformer package..."
+        python -m build
+        echo "📦 Package built successfully"
+        ls -la dist/
+    
+    - name: Validate free-transformer package
+      run: |
+        python -m pip install twine
+        echo "🔍 Validating free-transformer package..."
+        python -m twine check dist/*
+        echo "✅ Package validation passed"
+    
+    - name: Publish free-transformer to Test PyPI
+      if: ${{ github.event.inputs.test_pypi == 'true' }}
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        print-hash: true
+    
+    - name: Publish free-transformer to PyPI
+      if: ${{ github.event.inputs.test_pypi != 'true' }}
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        print-hash: true
