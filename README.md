@@ -84,6 +84,10 @@ git clone https://github.com/udapy/free-transformer.git
 cd free-transformer
 pip install -e ".[dev]"
 ```
+OR
+```bash
+uv run pip install free-transformer
+```
 
 > 📋 **Detailed installation instructions**: [Installation Guide](https://udapy.github.io/free-transformer/getting-started/installation/)
 
