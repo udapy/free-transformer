@@ -4,7 +4,6 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Documentation](https://img.shields.io/badge/docs-github--pages-blue)](https://udapy.github.io/free-transformer/)
-[![Tests](https://github.com/udapy/free-transformer/workflows/Tests/badge.svg)](https://github.com/udapy/free-transformer/actions)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 **Free Transformer**: A Llama-style decoder architecture with explicit latent plans, conditional VAE training, and benchmark comparisons against standard Transformers.
