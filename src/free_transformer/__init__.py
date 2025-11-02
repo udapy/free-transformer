@@ -2,7 +2,7 @@
 Free Transformer: A modular implementation of the Free Transformer architecture.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 
 from .baseline import TransformerBaseline
 from .config import ModelConfig, TrainingConfig

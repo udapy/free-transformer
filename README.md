@@ -23,36 +23,7 @@ This scalable conditional VAE architecture maintains high-level coherence, impro
 
 ### Architecture Overview
 
-```mermaid
-flowchart TD
-    subgraph "Training Mode"
-        A[Input Tokens] --> B[Embedding Layer]
-        B --> C["Decoder Blocks 1..L/2"]
-        C --> D["Encoder Block
-        (Non-causal, learned query ζ)"]
-        D --> E[Encoder Readout FC]
-        E --> F["Binary Mapper
-        Diff. discrete plan Z"]
-        F --> G["Inject Z into model
-        via Post-sampler FC"]
-        C --> G
-        G --> H["Decoder Blocks L/2+1..L"]
-        H --> I[Output Logits]
-    end
-
-    subgraph "Inference Mode"
-        AA[Prompt] --> BB[Embedding Layer]
-        BB --> CC["Decoder Blocks 1..L/2"]
-        subgraph "Plan Sampling"
-            DD["Sample Random Z
-            (Uniform prior)"]
-        end
-        DD --> GG[Inject Z via FC]
-        CC --> GG
-        GG --> HH["Decoder Blocks L/2+1..L"]
-        HH --> II[Generate Tokens]
-    end
-```
+![free transformer architecture - high level](architecture.png)
 
 ---
 
@@ -385,7 +356,6 @@ If you use Free Transformer in your research, please cite:
 - 📖 [**Documentation**](https://udapy.github.io/free-transformer/)
 - 🐛 [**Issues**](https://github.com/udapy/free-transformer/issues)
 - 💬 [**Discussions**](https://github.com/udapy/free-transformer/discussions)
-- 📄 [**Paper**](https://arxiv.org/abs/XXXX.XXXXX) *(coming soon)*
 
 ---
 
