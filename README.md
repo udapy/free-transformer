@@ -1,9 +1,17 @@
 # Free Transformer
 
-**Free Transformer**:
-A Llama-style decoder architecture with explicit latent plans, conditional VAE training, and benchmark comparisons against standard Transformers.
+[![PyPI version](https://badge.fury.io/py/free-transformer.svg)](https://badge.fury.io/py/free-transformer)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/docs-github--pages-blue)](https://udapy.github.io/free-transformer/)
+[![Tests](https://github.com/udapy/free-transformer/workflows/Tests/badge.svg)](https://github.com/udapy/free-transformer/actions)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+**Free Transformer**: A Llama-style decoder architecture with explicit latent plans, conditional VAE training, and benchmark comparisons against standard Transformers.
 
 Designed for efficient PyTorch training on modern GPUs with full FSDP support and modern optimizations.
+
+> 📖 **[Complete Documentation](https://udapy.github.io/free-transformer/)** | 🚀 **[Quick Start Guide](https://udapy.github.io/free-transformer/getting-started/quick-start/)** | 🏗️ **[Architecture Details](https://udapy.github.io/free-transformer/architecture/overview/)**
 
 ---
 
@@ -15,36 +23,7 @@ This scalable conditional VAE architecture maintains high-level coherence, impro
 
 ### Architecture Overview
 
-```mermaid
-flowchart TD
-    subgraph "Training Mode"
-        A[Input Tokens] --> B[Embedding Layer]
-        B --> C["Decoder Blocks 1..L/2"]
-        C --> D["Encoder Block
-        (Non-causal, learned query ζ)"]
-        D --> E[Encoder Readout FC]
-        E --> F["Binary Mapper
-        Diff. discrete plan Z"]
-        F --> G["Inject Z into model
-        via Post-sampler FC"]
-        C --> G
-        G --> H["Decoder Blocks L/2+1..L"]
-        H --> I[Output Logits]
-    end
-
-    subgraph "Inference Mode"
-        AA[Prompt] --> BB[Embedding Layer]
-        BB --> CC["Decoder Blocks 1..L/2"]
-        subgraph "Plan Sampling"
-            DD["Sample Random Z
-            (Uniform prior)"]
-        end
-        DD --> GG[Inject Z via FC]
-        CC --> GG
-        GG --> HH["Decoder Blocks L/2+1..L"]
-        HH --> II[Generate Tokens]
-    end
-```
+![free transformer architecture - high level](architecture.png)
 
 ---
 
@@ -76,71 +55,87 @@ flowchart TD
 
 ## Installation
 
-Using [UV](https://github.com/astral-sh/uv):
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh # Install UV
-uv venv --python 3.10
-source .venv/bin/activate
-uv pip install -e ".[dev]"
-
-# Or after PyPI release
-uv pip install free-transformer
-```
-
-Standard pip :
+### From PyPI (Recommended)
 
 ```bash
 pip install free-transformer
+```
+
+### From Source
+
+Using [UV](https://github.com/astral-sh/uv) (recommended):
+
+```bash
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and install
+git clone https://github.com/udapy/free-transformer.git
+cd free-transformer
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+```
+
+Using pip:
+
+```bash
+git clone https://github.com/udapy/free-transformer.git
+cd free-transformer
+pip install -e ".[dev]"
 ```
 OR
 ```bash
 uv run pip install free-transformer
 ```
 
+> 📋 **Detailed installation instructions**: [Installation Guide](https://udapy.github.io/free-transformer/getting-started/installation/)
+
 ---
 
-## Quick Start with Docker
+## Quick Start
 
-The fastest way to try the Free Transformer is using Docker:
+### 🐳 Docker (Fastest)
+
+The fastest way to try Free Transformer:
 
 ```bash
-# Clone the repository
 git clone https://github.com/udapy/free-transformer.git
 cd free-transformer
-
-# Run the demo (requires Docker and nvidia-docker for GPU)
 docker-compose up free-transformer-demo
 ```
 
-This will:
-1. Generate small synthetic training data
-2. Train both baseline and Free Transformer models
-3. Compare their performance
+### 🐍 Python API
 
-For detailed Docker instructions, see [docker/README.md](docker/README.md).
+```python
+from free_transformer import FreeTransformer, ModelConfig
 
-### Docker Options
+# Create and train a model
+config = ModelConfig(vocab_size=1000, hidden_dim=128, num_layers=6, latent_dim=8)
+model = FreeTransformer(config)
 
-**GPU Version (Recommended):**
-```bash
-# Build and run with GPU support
-make docker-build
-make docker-demo
+# Training mode
+import torch
+tokens = torch.randint(0, 1000, (2, 128))
+logits, z_logits = model(tokens, mode='training')
+
+# Generation
+generated = model.generate(tokens[:, :10], max_new_tokens=20)
 ```
 
-**CPU Version:**
+### 🚀 Command Line
+
 ```bash
-# Build and run CPU-only version
-make docker-build-cpu
-make docker-run-cpu
+# Generate synthetic data and run demo
+make demo
+
+# Train models separately
+make train-baseline  # Standard Transformer
+make train-free      # Free Transformer
+make compare         # Compare results
 ```
 
-**Interactive Development:**
-```bash
-# Start interactive container for development
-make docker-interactive
-```
+> 🎯 **Complete tutorial**: [Quick Start Guide](https://udapy.github.io/free-transformer/getting-started/quick-start/)
 
 ---
 
@@ -179,28 +174,18 @@ Check results in:
 
 ---
 
-## Python API Example
+## Key Features Comparison
 
-```python
-from free_transformer import FreeTransformer, ModelConfig
+| Feature | Standard Transformer | Free Transformer |
+|---------|---------------------|------------------|
+| **Generation** | Reactive (token-by-token) | Plan-then-generate |
+| **Coherence** | Local | Global + Local |
+| **Controllability** | Limited | High (via plan manipulation) |
+| **Training** | Cross-entropy loss | Conditional VAE loss |
+| **Memory** | Baseline | +10-15% (inference) |
+| **Speed** | Baseline | -5-10% (inference) |
 
-config = ModelConfig(
-    vocab_size=1000,
-    hidden_dim=128,
-    num_layers=6,
-    num_heads=4,
-    latent_dim=8,
-)
-
-model = FreeTransformer(config)
-
-# Training mode
-tokens = torch.randint(0, 1000, (2, 128))
-logits, z_logits = model(tokens, mode='training')
-
-# Inference/generation
-generated = model.generate(tokens[:, :10], max_new_tokens=20)
-```
+> 🔬 **Detailed comparison**: [Architecture Overview](https://udapy.github.io/free-transformer/architecture/overview/)
 
 ---
 
@@ -267,35 +252,44 @@ make quality
 ### 🚀 **Multi-GPU Training**
 ```bash
 # FSDP training with automatic GPU detection
-make train-baseline-fsdp
 make train-free-fsdp
 
-# Or use torchrun directly
-torchrun --nproc_per_node=auto examples/train_free.py --config configs/free_transformer.yaml --use-fsdp
+# Custom distributed training
+torchrun --nproc_per_node=auto examples/train_free.py --use-fsdp
 ```
 
-### 📊 **Custom Datasets**
-- Plug in HuggingFace datasets via config files
-- Built-in synthetic data generation for quick prototyping
-- Extensible data loading pipeline
+### 📊 **Flexible Data**
+- HuggingFace datasets integration
+- Built-in synthetic data generation
+- Custom data loading pipelines
 
-### 🔧 **Extensibility**
-- Modular architecture for easy customization
-- Add custom loss objectives, attention mechanisms, or model components
-- Hook system for training callbacks and monitoring
+### 🔧 **Extensible Architecture**
+- Modular components for easy customization
+- Custom loss functions and training schedules
+- Plugin system for new features
 
-### ⚠️ **Current Limitations**
-- **DeepSpeed**: Not yet implemented (FSDP is the current distributed training solution)
-- **Flash Attention**: Uses standard PyTorch attention (Flash Attention integration planned)
-- **Inference Optimizations**: No quantization or specialized inference backends yet
+> 📚 **Learn more**: [Training Guide](https://udapy.github.io/free-transformer/training/guide/) | [Multi-GPU Setup](https://udapy.github.io/free-transformer/training/multi-gpu/)
 
 ---
 
 ## Documentation
 
-- Architecture: `docs/architecture.md`
-- API: auto-generated documentation (see `docs/`)
-- Example configs and usage tips included.
+📖 **[Complete Documentation](https://udapy.github.io/free-transformer/)**
+
+### Quick Links
+- 🚀 [**Getting Started**](https://udapy.github.io/free-transformer/getting-started/installation/) - Installation and setup
+- 🏗️ [**Architecture**](https://udapy.github.io/free-transformer/architecture/overview/) - How Free Transformer works
+- 🎯 [**Training Guide**](https://udapy.github.io/free-transformer/training/guide/) - Training best practices
+- 📋 [**API Reference**](https://udapy.github.io/free-transformer/api/model/) - Complete API documentation
+- 💡 [**Examples**](https://udapy.github.io/free-transformer/examples/basic/) - Code examples and tutorials
+- ❓ [**FAQ**](https://udapy.github.io/free-transformer/faq/) - Frequently asked questions
+
+### Local Documentation
+```bash
+# Serve documentation locally
+make docs-serve
+# Open http://127.0.0.1:8000
+```
 
 ---
 
@@ -307,14 +301,23 @@ MIT License — see `LICENSE`
 
 ## Contributing
 
-PRs and issues welcome — see `CONTRIBUTING.md`
+We welcome contributions! Please see our [Contributing Guide](https://udapy.github.io/free-transformer/development/contributing/) for details.
 
-Before submitting code, run:
-
+### Quick Development Setup
 ```bash
-make test
-make quality
+git clone https://github.com/udapy/free-transformer.git
+cd free-transformer
+make install-all  # Install with all dependencies
+make test         # Run tests
+make quality      # Check code quality
 ```
+
+### Before Submitting
+- ✅ Tests pass: `make test`
+- ✅ Code quality: `make quality`  
+- ✅ Documentation builds: `make docs-build`
+
+> 📋 **Full guidelines**: [Contributing Guide](https://udapy.github.io/free-transformer/development/contributing/)
 
 ---
 
@@ -337,8 +340,33 @@ Use the CPU Docker image: `make docker-build-cpu && make docker-run-cpu`
 
 ---
 
+## Citation
+
+If you use Free Transformer in your research, please cite:
+
+```bibtex
+@software{free_transformer,
+  title={Free Transformer: Explicit Latent Planning for Autoregressive Generation},
+  author={Phalak, Uday},
+  year={2024},
+  url={https://github.com/udapy/free-transformer},
+  version={0.1.0}
+}
+```
+
 ## Links
 
-- [ArXiv: Free Transformer Paper](https://arxiv.org/abs/XXXX.XXXXX)
-- [PyPI (after release)](https://pypi.org/project/free-transformer/)
-- [GitHub Issues](https://github.com/yourusername/free-transformer/issues)
+- 📦 [**PyPI Package**](https://pypi.org/project/free-transformer/)
+- 📖 [**Documentation**](https://udapy.github.io/free-transformer/)
+- 🐛 [**Issues**](https://github.com/udapy/free-transformer/issues)
+- 💬 [**Discussions**](https://github.com/udapy/free-transformer/discussions)
+
+---
+
+<div align="center">
+
+**Free Transformer** - Bringing explicit planning to autoregressive generation
+
+[Documentation](https://udapy.github.io/free-transformer/) • [PyPI](https://pypi.org/project/free-transformer/) • [GitHub](https://github.com/udapy/free-transformer)
+
+</div>

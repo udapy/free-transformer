@@ -1,7 +1,10 @@
 .PHONY: help install install-dev test test-unit test-integration test-comparison
 .PHONY: lint format type-check quality train-baseline train-free compare
 .PHONY: generate-data clean clean-checkpoints clean-data clean-all
-.PHONY: setup-env publish-test publish
+.PHONY: setup-env publish-test publish clean-dist build check-package
+.PHONY: docs-install docs-build docs-serve docs-serve-dev docs-deploy docs-clean docs-check
+.PHONY: version-bump-patch version-bump-minor version-bump-major
+.PHONY: release-patch release-minor release-major validate-release
 
 # Color output
 BLUE := \033[0;34m
@@ -50,7 +53,7 @@ install-dev: ## Install package with development dependencies
 	@$(UV_PIP) install -e ".[dev]"
 	@echo "$(GREEN)Development installation complete!$(NC)"
 
-install-all: setup-env install-dev ## Full setup: create env and install all dependencies
+install-all: setup-env install-dev docs-install ## Full setup: create env and install all dependencies
 	@echo "$(GREEN)Full installation complete!$(NC)"
 
 sync: ## Sync dependencies with uv.lock
@@ -201,6 +204,7 @@ quick-start: install-dev generate-data-small test-fast ## Quick start: setup + s
 	@echo "  1. Run 'make train-baseline' to train baseline model"
 	@echo "  2. Run 'make train-free' to train Free Transformer"
 	@echo "  3. Run 'make compare' to compare models"
+	@echo "  4. Run 'make docs-serve' to view documentation"
 
 demo: generate-data-small train-baseline train-free compare ## Full demo pipeline
 	@echo "$(GREEN)Demo complete!$(NC)"
@@ -231,7 +235,7 @@ clean-results: ## Remove evaluation results
 	@rm -rf results
 	@echo "$(GREEN)Results removed!$(NC)"
 
-clean-all: clean clean-checkpoints clean-data clean-results ## Remove everything (cache, checkpoints, data)
+clean-all: clean clean-checkpoints clean-data clean-results docs-clean ## Remove everything (cache, checkpoints, data, docs)
 	@echo "$(GREEN)Full cleanup complete!$(NC)"
 
 clean-env: ## Remove virtual environment
@@ -241,27 +245,6 @@ clean-env: ## Remove virtual environment
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		rm -rf .venv; \
 		echo "$(GREEN)Environment removed!$(NC)"; \
-	fi
-
-##@ Publishing
-
-build: ## Build distribution packages
-	@echo "$(BLUE)Building package...$(NC)"
-	@$(UV) build
-	@echo "$(GREEN)Build complete! Packages in dist/$(NC)"
-
-publish-test: build ## Publish to Test PyPI
-	@echo "$(BLUE)Publishing to Test PyPI...$(NC)"
-	@$(UV) publish --repository testpypi
-	@echo "$(GREEN)Published to Test PyPI!$(NC)"
-
-publish: build ## Publish to PyPI
-	@echo "$(YELLOW)Warning: Publishing to production PyPI$(NC)"
-	@read -p "Continue? [y/N] " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		$(UV) publish; \
-		echo "$(GREEN)Published to PyPI!$(NC)"; \
 	fi
 
 ##@ Docker
@@ -306,9 +289,48 @@ docker-clean: ## Clean Docker containers and images
 	@docker rmi $(PROJECT_NAME):demo $(PROJECT_NAME):cpu 2>/dev/null || true
 	@echo "$(GREEN)Docker resources cleaned!$(NC)"
 
+##@ Documentation
+
+docs-install: ## Install documentation dependencies
+	@echo "$(BLUE)Installing documentation dependencies...$(NC)"
+	@$(UV_PIP) install -e ".[docs]"
+	@echo "$(GREEN)Documentation dependencies installed!$(NC)"
+
+docs-build: ## Build documentation
+	@echo "$(BLUE)Building documentation...$(NC)"
+	@$(UV_RUN) mkdocs build
+	@echo "$(GREEN)Documentation built in site/$(NC)"
+
+docs-serve: ## Serve documentation locally
+	@echo "$(BLUE)Serving documentation (will find available port)$(NC)"
+	@$(UV_RUN) python scripts/serve_docs.py
+
+docs-serve-dev: ## Serve documentation with auto-reload
+	@echo "$(BLUE)Serving documentation with auto-reload (will find available port)$(NC)"
+	@$(UV_RUN) python scripts/serve_docs.py --dev
+
+docs-serve-port: ## Serve documentation on specific port (usage: make docs-serve-port PORT=8001)
+	@echo "$(BLUE)Serving documentation at http://127.0.0.1:$(or $(PORT),8000)$(NC)"
+	@$(UV_RUN) mkdocs serve --dev-addr 127.0.0.1:$(or $(PORT),8000)
+
+docs-deploy: ## Deploy documentation to GitHub Pages
+	@echo "$(BLUE)Deploying documentation to GitHub Pages...$(NC)"
+	@$(UV_RUN) mkdocs gh-deploy --force
+	@echo "$(GREEN)Documentation deployed!$(NC)"
+
+docs-clean: ## Clean documentation build
+	@echo "$(BLUE)Cleaning documentation build...$(NC)"
+	@rm -rf site/
+	@echo "$(GREEN)Documentation build cleaned!$(NC)"
+
+docs-check: ## Check documentation for issues
+	@echo "$(BLUE)Checking documentation...$(NC)"
+	@$(UV_RUN) mkdocs build --strict
+	@echo "$(GREEN)Documentation check passed!$(NC)"
+
 ##@ CI/CD
 
-ci: quality test ## Run CI pipeline locally
+ci: quality test docs-check ## Run CI pipeline locally
 	@echo "$(GREEN)CI checks passed!$(NC)"
 
 pre-commit: format lint test-fast ## Run pre-commit checks
@@ -332,3 +354,69 @@ info: ## Display project information
 check-gpu: ## Check GPU availability
 	@echo "$(BLUE)Checking GPU...$(NC)"
 	@$(UV_RUN) python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}'); [print(f'GPU {i}: {torch.cuda.get_device_name(i)}') for i in range(torch.cuda.device_count())]"
+
+##@ Publishing
+
+clean-dist: ## Clean distribution files
+	@echo "$(BLUE)Cleaning distribution files...$(NC)"
+	@rm -rf dist/ build/ *.egg-info/
+	@echo "$(GREEN)Distribution files cleaned!$(NC)"
+
+build: clean-dist ## Build distribution packages
+	@echo "$(BLUE)Building package...$(NC)"
+	@$(UV) build
+	@echo "$(GREEN)Build complete! Packages in dist/$(NC)"
+	@echo "$(YELLOW)Files created:$(NC)"
+	@ls -la dist/
+
+check-package: build ## Check package for PyPI compliance
+	@echo "$(BLUE)Checking package...$(NC)"
+	@$(UV_RUN) twine check dist/*
+	@echo "$(GREEN)Package check complete!$(NC)"
+
+validate-release: ## Comprehensive pre-release validation
+	@echo "$(BLUE)Running comprehensive release validation...$(NC)"
+	@$(UV_RUN) python scripts/validate_package.py
+
+publish-test: check-package ## Publish to Test PyPI
+	@echo "$(BLUE)Publishing to Test PyPI...$(NC)"
+	@$(UV_RUN) twine upload --repository testpypi dist/*
+	@echo "$(GREEN)Published to Test PyPI!$(NC)"
+	@echo "$(YELLOW)Test installation:$(NC)"
+	@echo "  pip install --index-url https://test.pypi.org/simple/ free-transformer"
+
+publish: check-package ## Publish to PyPI
+	@echo "$(YELLOW)Warning: Publishing to production PyPI$(NC)"
+	@echo "$(YELLOW)Current version: $$(grep '^version = ' pyproject.toml | cut -d'"' -f2)$(NC)"
+	@read -p "Continue? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		$(UV_RUN) twine upload dist/*; \
+		echo "$(GREEN)Published to PyPI!$(NC)"; \
+		echo "$(YELLOW)Installation:$(NC)"; \
+		echo "  pip install free-transformer"; \
+	fi
+
+version-bump-patch: ## Bump patch version (0.1.0 -> 0.1.1)
+	@echo "$(BLUE)Bumping patch version...$(NC)"
+	@$(UV_RUN) python scripts/bump_version.py patch
+	@echo "$(GREEN)Version bumped!$(NC)"
+
+version-bump-minor: ## Bump minor version (0.1.0 -> 0.2.0)
+	@echo "$(BLUE)Bumping minor version...$(NC)"
+	@$(UV_RUN) python scripts/bump_version.py minor
+	@echo "$(GREEN)Version bumped!$(NC)"
+
+version-bump-major: ## Bump major version (0.1.0 -> 1.0.0)
+	@echo "$(BLUE)Bumping major version...$(NC)"
+	@$(UV_RUN) python scripts/bump_version.py major
+	@echo "$(GREEN)Version bumped!$(NC)"
+
+release-patch: version-bump-patch build publish ## Release new patch version
+	@echo "$(GREEN)Patch release complete!$(NC)"
+
+release-minor: version-bump-minor build publish ## Release new minor version
+	@echo "$(GREEN)Minor release complete!$(NC)"
+
+release-major: version-bump-major build publish ## Release new major version
+	@echo "$(GREEN)Major release complete!$(NC)"
