@@ -2,6 +2,7 @@
 .PHONY: lint format type-check quality train-baseline train-free compare
 .PHONY: generate-data clean clean-checkpoints clean-data clean-all
 .PHONY: setup-env publish-test publish
+.PHONY: docs-install docs-build docs-serve docs-serve-dev docs-deploy docs-clean docs-check
 
 # Color output
 BLUE := \033[0;34m
@@ -50,7 +51,7 @@ install-dev: ## Install package with development dependencies
 	@$(UV_PIP) install -e ".[dev]"
 	@echo "$(GREEN)Development installation complete!$(NC)"
 
-install-all: setup-env install-dev ## Full setup: create env and install all dependencies
+install-all: setup-env install-dev docs-install ## Full setup: create env and install all dependencies
 	@echo "$(GREEN)Full installation complete!$(NC)"
 
 sync: ## Sync dependencies with uv.lock
@@ -201,6 +202,7 @@ quick-start: install-dev generate-data-small test-fast ## Quick start: setup + s
 	@echo "  1. Run 'make train-baseline' to train baseline model"
 	@echo "  2. Run 'make train-free' to train Free Transformer"
 	@echo "  3. Run 'make compare' to compare models"
+	@echo "  4. Run 'make docs-serve' to view documentation"
 
 demo: generate-data-small train-baseline train-free compare ## Full demo pipeline
 	@echo "$(GREEN)Demo complete!$(NC)"
@@ -231,7 +233,7 @@ clean-results: ## Remove evaluation results
 	@rm -rf results
 	@echo "$(GREEN)Results removed!$(NC)"
 
-clean-all: clean clean-checkpoints clean-data clean-results ## Remove everything (cache, checkpoints, data)
+clean-all: clean clean-checkpoints clean-data clean-results docs-clean ## Remove everything (cache, checkpoints, data, docs)
 	@echo "$(GREEN)Full cleanup complete!$(NC)"
 
 clean-env: ## Remove virtual environment
@@ -306,9 +308,48 @@ docker-clean: ## Clean Docker containers and images
 	@docker rmi $(PROJECT_NAME):demo $(PROJECT_NAME):cpu 2>/dev/null || true
 	@echo "$(GREEN)Docker resources cleaned!$(NC)"
 
+##@ Documentation
+
+docs-install: ## Install documentation dependencies
+	@echo "$(BLUE)Installing documentation dependencies...$(NC)"
+	@$(UV_PIP) install -e ".[docs]"
+	@echo "$(GREEN)Documentation dependencies installed!$(NC)"
+
+docs-build: ## Build documentation
+	@echo "$(BLUE)Building documentation...$(NC)"
+	@$(UV_RUN) mkdocs build
+	@echo "$(GREEN)Documentation built in site/$(NC)"
+
+docs-serve: ## Serve documentation locally
+	@echo "$(BLUE)Serving documentation (will find available port)$(NC)"
+	@$(UV_RUN) python scripts/serve_docs.py
+
+docs-serve-dev: ## Serve documentation with auto-reload
+	@echo "$(BLUE)Serving documentation with auto-reload (will find available port)$(NC)"
+	@$(UV_RUN) python scripts/serve_docs.py --dev
+
+docs-serve-port: ## Serve documentation on specific port (usage: make docs-serve-port PORT=8001)
+	@echo "$(BLUE)Serving documentation at http://127.0.0.1:$(or $(PORT),8000)$(NC)"
+	@$(UV_RUN) mkdocs serve --dev-addr 127.0.0.1:$(or $(PORT),8000)
+
+docs-deploy: ## Deploy documentation to GitHub Pages
+	@echo "$(BLUE)Deploying documentation to GitHub Pages...$(NC)"
+	@$(UV_RUN) mkdocs gh-deploy --force
+	@echo "$(GREEN)Documentation deployed!$(NC)"
+
+docs-clean: ## Clean documentation build
+	@echo "$(BLUE)Cleaning documentation build...$(NC)"
+	@rm -rf site/
+	@echo "$(GREEN)Documentation build cleaned!$(NC)"
+
+docs-check: ## Check documentation for issues
+	@echo "$(BLUE)Checking documentation...$(NC)"
+	@$(UV_RUN) mkdocs build --strict
+	@echo "$(GREEN)Documentation check passed!$(NC)"
+
 ##@ CI/CD
 
-ci: quality test ## Run CI pipeline locally
+ci: quality test docs-check ## Run CI pipeline locally
 	@echo "$(GREEN)CI checks passed!$(NC)"
 
 pre-commit: format lint test-fast ## Run pre-commit checks

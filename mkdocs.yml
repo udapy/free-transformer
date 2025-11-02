@@ -1,0 +1,102 @@
+site_name: Free Transformer Documentation
+site_description: A Llama-style decoder architecture with explicit latent plans and conditional VAE training
+site_author: Uday Phalak
+site_url: https://udapy.github.io/free-transformer
+
+repo_name: udapy/free-transformer
+repo_url: https://github.com/udapy/free-transformer
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep green
+      accent: red
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep green
+      accent: red
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: false
+            merge_init_into_class: true
+  - autorefs
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quick-start.md
+    - Docker Setup: getting-started/docker.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Free Transformer: architecture/free-transformer.md
+    - Baseline Model: architecture/baseline.md
+    - Latent Planning: architecture/latent-planning.md
+  - Training:
+    - Training Guide: training/guide.md
+    - Configuration: training/configuration.md
+    - Multi-GPU: training/multi-gpu.md
+    - Synthetic Data: training/synthetic-data.md
+  - API Reference:
+    - Model: api/model.md
+    - Config: api/config.md
+    - Training Utils: api/training.md
+    - Losses: api/losses.md
+    - Data: api/data.md
+  - Examples:
+    - Basic Usage: examples/basic.md
+    - Custom Training: examples/custom-training.md
+    - Evaluation: examples/evaluation.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Testing: development/testing.md
+    - Code Quality: development/quality.md
+  - FAQ: faq.md

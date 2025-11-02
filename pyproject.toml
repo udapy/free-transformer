@@ -42,6 +42,10 @@ dependencies = [
     "types-pyyaml>=6.0.12.20250915",
     "isort>=7.0.0",
     "twine>=6.2.0",
+    "mkdocs-autorefs>=1.4.3",
+    "mkdocstrings>=0.30.1",
+    "mkdocs-material>=9.6.22",
+    "mkdocs>=1.6.1",
 ]
 
 [project.optional-dependencies]
