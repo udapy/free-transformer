@@ -1,8 +1,10 @@
 .PHONY: help install install-dev test test-unit test-integration test-comparison
 .PHONY: lint format type-check quality train-baseline train-free compare
 .PHONY: generate-data clean clean-checkpoints clean-data clean-all
-.PHONY: setup-env publish-test publish
+.PHONY: setup-env publish-test publish clean-dist build check-package
 .PHONY: docs-install docs-build docs-serve docs-serve-dev docs-deploy docs-clean docs-check
+.PHONY: version-bump-patch version-bump-minor version-bump-major
+.PHONY: release-patch release-minor release-major validate-release
 
 # Color output
 BLUE := \033[0;34m
@@ -245,27 +247,6 @@ clean-env: ## Remove virtual environment
 		echo "$(GREEN)Environment removed!$(NC)"; \
 	fi
 
-##@ Publishing
-
-build: ## Build distribution packages
-	@echo "$(BLUE)Building package...$(NC)"
-	@$(UV) build
-	@echo "$(GREEN)Build complete! Packages in dist/$(NC)"
-
-publish-test: build ## Publish to Test PyPI
-	@echo "$(BLUE)Publishing to Test PyPI...$(NC)"
-	@$(UV) publish --repository testpypi
-	@echo "$(GREEN)Published to Test PyPI!$(NC)"
-
-publish: build ## Publish to PyPI
-	@echo "$(YELLOW)Warning: Publishing to production PyPI$(NC)"
-	@read -p "Continue? [y/N] " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		$(UV) publish; \
-		echo "$(GREEN)Published to PyPI!$(NC)"; \
-	fi
-
 ##@ Docker
 
 docker-build: ## Build Docker image for GPU
@@ -373,3 +354,69 @@ info: ## Display project information
 check-gpu: ## Check GPU availability
 	@echo "$(BLUE)Checking GPU...$(NC)"
 	@$(UV_RUN) python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}'); [print(f'GPU {i}: {torch.cuda.get_device_name(i)}') for i in range(torch.cuda.device_count())]"
+
+##@ Publishing
+
+clean-dist: ## Clean distribution files
+	@echo "$(BLUE)Cleaning distribution files...$(NC)"
+	@rm -rf dist/ build/ *.egg-info/
+	@echo "$(GREEN)Distribution files cleaned!$(NC)"
+
+build: clean-dist ## Build distribution packages
+	@echo "$(BLUE)Building package...$(NC)"
+	@$(UV) build
+	@echo "$(GREEN)Build complete! Packages in dist/$(NC)"
+	@echo "$(YELLOW)Files created:$(NC)"
+	@ls -la dist/
+
+check-package: build ## Check package for PyPI compliance
+	@echo "$(BLUE)Checking package...$(NC)"
+	@$(UV_RUN) twine check dist/*
+	@echo "$(GREEN)Package check complete!$(NC)"
+
+validate-release: ## Comprehensive pre-release validation
+	@echo "$(BLUE)Running comprehensive release validation...$(NC)"
+	@$(UV_RUN) python scripts/validate_package.py
+
+publish-test: check-package ## Publish to Test PyPI
+	@echo "$(BLUE)Publishing to Test PyPI...$(NC)"
+	@$(UV_RUN) twine upload --repository testpypi dist/*
+	@echo "$(GREEN)Published to Test PyPI!$(NC)"
+	@echo "$(YELLOW)Test installation:$(NC)"
+	@echo "  pip install --index-url https://test.pypi.org/simple/ free-transformer"
+
+publish: check-package ## Publish to PyPI
+	@echo "$(YELLOW)Warning: Publishing to production PyPI$(NC)"
+	@echo "$(YELLOW)Current version: $$(grep '^version = ' pyproject.toml | cut -d'"' -f2)$(NC)"
+	@read -p "Continue? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		$(UV_RUN) twine upload dist/*; \
+		echo "$(GREEN)Published to PyPI!$(NC)"; \
+		echo "$(YELLOW)Installation:$(NC)"; \
+		echo "  pip install free-transformer"; \
+	fi
+
+version-bump-patch: ## Bump patch version (0.1.0 -> 0.1.1)
+	@echo "$(BLUE)Bumping patch version...$(NC)"
+	@$(UV_RUN) python scripts/bump_version.py patch
+	@echo "$(GREEN)Version bumped!$(NC)"
+
+version-bump-minor: ## Bump minor version (0.1.0 -> 0.2.0)
+	@echo "$(BLUE)Bumping minor version...$(NC)"
+	@$(UV_RUN) python scripts/bump_version.py minor
+	@echo "$(GREEN)Version bumped!$(NC)"
+
+version-bump-major: ## Bump major version (0.1.0 -> 1.0.0)
+	@echo "$(BLUE)Bumping major version...$(NC)"
+	@$(UV_RUN) python scripts/bump_version.py major
+	@echo "$(GREEN)Version bumped!$(NC)"
+
+release-patch: version-bump-patch build publish ## Release new patch version
+	@echo "$(GREEN)Patch release complete!$(NC)"
+
+release-minor: version-bump-minor build publish ## Release new minor version
+	@echo "$(GREEN)Minor release complete!$(NC)"
+
+release-major: version-bump-major build publish ## Release new major version
+	@echo "$(GREEN)Major release complete!$(NC)"
